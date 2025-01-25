@@ -1,0 +1,104 @@
+:root {
+  --primary: #904b03;
+  --secondary: #828487;
+}
+
+.bg-login {
+  display: absolute;
+  z-index: -9999;
+  width: 100vw;
+  height: 100vh;
+  background-image: url("/images/image.png");
+  background-size: 100vw 100vh;
+  background-repeat: no-repeat;
+}
+
+.blur {
+  background: rgba(255, 255, 255, 0.09);
+  display: absolute;
+  z-index: -9998;
+  width: 100vw;
+  height: 100vh;
+  background-size: 100vw 100vh;
+  background-repeat: no-repeat;
+  backdrop-filter: blur(9px);
+}
+
+.form-login {
+  padding-top: 54px;
+  padding-left: 90px;
+  padding-right: 90px;
+  width: 619px;
+
+  > h4 {
+    text-align: center;
+    font-size: 28px;
+    font-style: normal;
+    font-weight: 600;
+    line-height: 150%;
+    font-family: sans-serif;
+    font-size: 28px;
+    font-style: normal;
+    font-weight: 600;
+    line-height: 150%;
+    margin-bottom: 32px;
+    margin-top: 60px;
+  }
+  > form {
+    > .textbox {
+      > .username,
+      .password {
+        margin-bottom: 20px;
+
+        > span {
+          display: block;
+          color: var(--secondary);
+          font-size: 12px;
+        }
+
+        > .username-div {
+          width: 100%;
+          padding: 12px 16px 12px 16px;
+          border-radius: 58px;
+          border: #e4e4e4 1px solid;
+
+          > input {
+            border: none;
+            width: 80%;
+          }
+          > input:focus {
+            outline: none;
+          }
+        }
+
+        > .password-div {
+          width: 100%;
+          padding: 12px 16px 12px 16px;
+          border-radius: 58px;
+          border: #e4e4e4 1px solid;
+
+          > input {
+            border: none;
+            width: 80%;
+          }
+          > input:focus {
+            outline: none;
+          }
+        }
+      }
+    }
+    > .div-loginbtn {
+      > .btn-login {
+        border: none;
+        border-radius: 58px;
+        background-color: var(--primary);
+        width: 100%;
+        color: white;
+        padding: 12px;
+        font-family: Poppins, sans-serif;
+        font-weight: 700;
+        margin-bottom: 32px;
+      }
+    }
+  }
+}

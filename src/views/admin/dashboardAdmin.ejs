@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>POS System</title>
+  <link rel="stylesheet" href="/css/karyawan.css">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
+  <style>
+    .navigasi {
+      color: #904b03;
+      text-decoration: underline;
+    }
+    .away {
+      color: black;
+      text-decoration: none;
+    }
+    .logout {
+      background-color: #904b03;
+      color: white;
+      border: none;
+      border-radius: 10px;
+    }
+    .menu-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin: 10px;
+      padding: 10px;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      max-width: 200px;
+      text-align: center;
+    }
+    .menu-item-img {
+      width: 200px;
+      height: 100px;
+      border-radius: 6px;
+      margin-top: 6px;
+      object-fit: cover;
+      margin-bottom: 10px;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1 class="text-dark">Dashboard</h1>
+    <div class="text-dark fw-bold">
+      <span class="mx-2 navigasi">Home</span>
+      <span class="mx-2">
+        <a href="/admin/riwayat" class="away">Riwayat</a>
+      </span>
+      <span class="mx-2">
+        <a href="/admin/user" class="away">Akun Kasir</a>
+      </span>
+    </div>
+    <div class="datetime text-dark">
+      <span id="time"></span>
+      <span id="date"></span>
+      <span class="fw-bold mx-2" id-data="<%= user.id %>"> Welcome <%= user.name %></span>
+      <form action="http://localhost:3001/logout" class="d-inline" method="post">
+        <button type="submit" class="logout p-2">Logout</button>
+      </form>
+    </div>
+  </header>
+
+  <main>
+    <div class="sidebar">
+      <button class="category-btn active" data-category="coffee">
+        <img src="/images/coffe.png" alt="">
+        Coffee</button>
+      <button class="category-btn" data-category="beverages">
+        <img src="/images/beverages.png" alt="">
+        Beverages</button>
+      <button class="category-btn" data-category="snack">
+        <img src="/images/snack.png" alt="">
+        Snack</button>
+    </div>
+    <div class="menu">
+      <div id="menuItems" class="menu-container"></div>
+    </div>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
+  <script>
+    let menuData = {
+      coffee: [],
+      beverages: [],
+      snack: [],
+    };
+
+    fetch("http://localhost:3001/admin/product")
+      .then(res => res.json())
+      .then(res => {
+        if (res.response != 404) {
+          res.data.forEach(item => {
+            if (item.kategori === "coffe") {
+              menuData.coffee.push(item);
+            } else if (item.kategori === "beverages") {
+              menuData.beverages.push(item);
+            } else {
+              menuData.snack.push(item);
+            }
+          });
+        }
+
+        let currentCategory = "coffee";
+        const menuContainer = document.getElementById("menuItems");
+        const categoryButtons = document.querySelectorAll(".category-btn");
+
+        function renderMenu(category) {
+  menuContainer.innerHTML = `
+    <div class="menu-item" onclick="showAddProductForm()">
+      <img src="https://img.icons8.com/?size=512&id=83136&format=png" alt="Tambah Produk" class="menu-item-img">
+      <h3>Tambah Produk</h3>
+    </div>
+  `;
+  menuData[category].forEach((item) => {
+    const menuItem = document.createElement("div");
+    menuItem.className = "menu-item";
+    menuItem.innerHTML = `
+      <img src="../images/${item.link}" alt="${item.namaProduk}" width="60" class="menu-item-img">
+      <h3>${item.namaProduk}</h3>
+      <p>Rp.${item.harga.toLocaleString()}</p>
+      <div>
+        <button class="edit" onclick="showEditProductForm(${item.idProduk}, '${item.namaProduk}', '${item.kategori}', ${item.harga})">Edit</button>
+        <button class="delete" onclick="showDeleteConfirmation(${item.idProduk}, '${item.namaProduk}')">Delete</button>
+      </div>
+    `;
+    menuContainer.appendChild(menuItem);
+  });
+}
+
+        // Handle category button clicks
+        categoryButtons.forEach(button => {
+          button.addEventListener("click", () => {
+            document.querySelector(".category-btn.active").classList.remove("active");
+            button.classList.add("active");
+            currentCategory = button.dataset.category;
+            renderMenu(currentCategory);
+          });
+        });
+
+        // Initial render
+        renderMenu(currentCategory);
+      });
+
+// Tambahkan fungsi untuk menampilkan pop-up form tambah produk
+function showAddProductForm() {
+  const formHTML = `
+    <div class="modal fade" id="addProductModal" tabindex="-1" aria-labelledby="addProductModalLabel" aria-hidden="true">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="addProductModalLabel">Tambah Produk Baru</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <form id="addProductForm" enctype="multipart/form-data">
+            <div class="modal-body">  
+            <div class="mb-3">
+                <label for="productName" class="form-label">Nama Produk</label>
+                <input type="text" class="form-control" id="productName" name="namaProduk" required>
+              </div>
+              <div class="mb-3">
+                <label for="productCategory" class="form-label">Kategori</label>
+                <select class="form-select" id="productCategory" name="kategori" required>
+                  <option value="coffe">Coffee</option>
+                  <option value="beverages">Beverages</option>
+                  <option value="snack">Snack</option>
+                </select>
+              </div>
+              <div class="mb-3">
+                <label for="productPrice" class="form-label">Harga</label>
+                <input type="number" class="form-control" id="productPrice" name="harga" required>
+              </div>
+              <div class="mb-3">
+                <label for="productImage" class="form-label">Gambar Produk</label>
+                <input type="file" class="form-control" id="image" name="image" required>
+              </div>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="delete" data-bs-dismiss="modal">Batal</button>
+              <button type="submit" class="edit">Tambah Produk</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  `;
+  document.body.insertAdjacentHTML("beforeend", formHTML);
+  const modal = new bootstrap.Modal(document.getElementById("addProductModal"));
+  modal.show();
+
+  // Handle form submission
+  document.getElementById("addProductForm").addEventListener("submit", function (e) {
+    e.preventDefault();
+    const formData = new FormData(this); // Ambil data form termasuk file
+
+    fetch("http://localhost:3001/admin/product", {
+      method: "POST",
+      body: formData, // Kirim sebagai multipart/form-data
+    })
+      .then((response) => {
+        if (response.ok) {
+          alert("Produk berhasil ditambahkan!");
+          location.reload(); // Muat ulang halaman untuk memperbarui daftar menu
+        } else {
+          console.log(response)
+          alert("Gagal menambahkan produk.");
+        }
+      })
+      .catch((err) => {
+        console.error("Error:", err);
+        alert("Terjadi kesalahan.");
+      });
+  });
+}
+
+
+function showEditProductForm(idProduk, namaProduk, kategori, harga) {
+  const formHTML = `
+    <div class="modal fade" id="editProductModal" tabindex="-1" aria-labelledby="editProductModalLabel" aria-hidden="true">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="editProductModalLabel">Edit Produk</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <form id="editProductForm">
+            <div class="modal-body">
+              <div class="mb-3">
+                <label for="editProductName" class="form-label">Nama Produk</label>
+                <input type="text" class="form-control" id="editProductName" name="namaProduk" value="${namaProduk}" required>
+              </div>
+              <div class="mb-3">
+                <label for="editProductCategory" class="form-label">Kategori</label>
+                <select class="form-select" id="editProductCategory" name="kategori" required>
+                  <option value="coffe" ${kategori === "coffe" ? "selected" : ""}>Coffee</option>
+                  <option value="beverages" ${kategori === "beverages" ? "selected" : ""}>Beverages</option>
+                  <option value="snack" ${kategori === "snack" ? "selected" : ""}>Snack</option>
+                </select>
+              </div>
+              <div class="mb-3">
+                <label for="editProductPrice" class="form-label">Harga</label>
+                <input type="number" class="form-control" id="editProductPrice" name="harga" value="${harga}" required>
+              </div>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="delete" data-bs-dismiss="modal">Batal</button>
+              <button type="submit" class="edit">Simpan Perubahan</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  `;
+  document.body.insertAdjacentHTML("beforeend", formHTML);
+  const modal = new bootstrap.Modal(document.getElementById("editProductModal"));
+  modal.show();
+
+  // Handle form submission
+  document.getElementById("editProductForm").addEventListener("submit", function (e) {
+    e.preventDefault();
+    const formData = new FormData(this);
+    fetch(`http://localhost:3001/admin/product/${idProduk}`, {
+      method: "PUT",
+      body: JSON.stringify({
+        namaProduk: formData.get("namaProduk"),
+        kategori: formData.get("kategori"),
+        harga: parseInt(formData.get("harga"), 10),
+      }),
+      headers: {
+        "Content-Type": "application/json",
+      },
+    })
+      .then((response) => {
+        if (response.ok) {
+        console.log(idProduk)
+          alert("Produk berhasil diperbarui!");
+          location.reload(); // Refresh halaman untuk melihat perubahan
+        } else {
+          alert("Gagal memperbarui produk.");
+        }
+      })
+      .catch((err) => {
+        console.error("Error:", err);
+        alert("Terjadi kesalahan.");
+      });
+  });
+}
+
+function showDeleteConfirmation(idProduk, namaProduk) {
+
+    let modalExist = document.querySelector('#deleteProductModal')
+    console.log(modalExist)
+    if(modalExist) {
+        modalExist.remove()
+    }
+
+  const confirmationHTML = `
+    <div class="modal fade" id="deleteProductModal" tabindex="-1" aria-labelledby="deleteProductModalLabel" aria-hidden="true">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="deleteProductModalLabel">Hapus Produk</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            Apakah Anda yakin ingin menghapus produk <strong>${namaProduk}</strong>?
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="delete" data-bs-dismiss="modal">Batal</button>
+            <button type="button" class="edit" onclick="deleteProduct(${id})">Hapus</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+  document.body.insertAdjacentHTML("beforeend", confirmationHTML);
+  const modal = new bootstrap.Modal(document.getElementById("deleteProductModal"));
+  modal.show();
+}
+
+function deleteProduct(idProduk) {
+  fetch(`http://localhost:3001/admin/product/${idProduk}`, {
+    method: "DELETE",
+  })
+    .then((response) => {
+      if (response.ok) {
+        alert("Produk berhasil dihapus!");
+        location.reload(); // Refresh halaman untuk melihat perubahan
+      } else {
+        alert("Gagal menghapus produk.");
+      }
+    })
+    .catch((err) => {
+      console.error("Error:", err);
+      alert("Terjadi kesalahan.");
+    });
+}
+
+
+    // Update date and time
+    function updateDateTime() {
+      const now = new Date();
+      document.getElementById("time").textContent = now.toLocaleTimeString();
+      document.getElementById("date").textContent = now.toLocaleDateString();
+    }
+    setInterval(updateDateTime, 1000);
+  </script>
+</body>
+</html>

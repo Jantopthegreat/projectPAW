@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>POS System</title>
+  <link rel="stylesheet" href="/css/karyawan.css">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
+  <style>
+    .navigasi {
+        color : #904b03;
+        text-decoration: underline;
+    }
+    .away {
+        color: black;
+        text-decoration: none;
+    }
+    .logout {
+        background-color: #904b03;
+        color: white;
+        border: none;
+        border-radius: 10px;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1 class="text-dark">Dashboard</h1>
+    <div class="text-dark fw-bold">
+        <span class="mx-2 navigasi">Home</span>
+        <span class="mx-2">
+        <a href="/karyawan/riwayat" class="away">
+            Riwayat
+        </a>
+        </span>
+    </div>
+    <div class="datetime text-dark">
+      <span id="time"></span>
+      <span id="date"></span>
+      <span class="fw-bold mx-2" id-data="<%= user.id %>"> Welcome <%= user.name %></span>
+      <form action="http://localhost:3001/logout" class="d-inline" method="post">
+          <button type="submit" class="logout p-2">Logout</button>
+      </form>
+    </div>
+  </header>
+
+  <main>
+    <div class="sidebar">
+      <button class="category-btn active" data-category="coffee">
+        <img src="/images/coffe.png" alt="" width="50">
+        <div>
+            Coffee
+        </div>
+    </button>
+      <button class="category-btn" data-category="beverages">
+        <img src="/images/beverages.png" alt="" width="50">
+        <div>
+            Beverages
+        </div>
+    </button>
+      <button class="category-btn" data-category="snack">
+        <img src="/images/snack.png" alt="" width="50">
+        <div>
+            Snack
+        </div>
+    </button>
+    </div>
+
+    <div class="menu">
+      <div id="menuItems" class="menu-container"></div>
+    </div>
+
+    <div class="order-summary">
+      <h2>Orders</h2>
+      <div id="orderList"></div>
+      <div class="totals">
+        <p>Subtotal: Rp.<span id="subTotal">0</span></p>
+        <p>Total: Rp.<span id="total">0</span></p>
+      </div>
+      <button class="button btn-bayar" id="payButton">Bayar</button>
+    </div>
+  </main>
+
+  <!-- Payment Modal -->
+  <div id="paymentModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>Payment Options</h2>
+      </div>
+      <div class="totalbayar" align="center"></div>
+      <div class="modal-body d-flex justify-content-center">
+        <button class="button pay-btn" id="cashPayment">Cash</button>
+        <button class="button pay-btn" id="nonCashPayment">Non-Cash</button>
+      </div>
+      <div class="modal-footer">
+        <button class="button cancel-btn" id="closeModal">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
+  <script>
+    let menuData = {
+  coffee: [],
+  beverages: [],
+  snack: [],
+};
+
+
+fetch("http://localhost:3001/karyawan/product")
+  .then(res => res.json())
+  .then(res => {
+    for (let i = 0; i < res.data.length; i++) {
+
+        if (!res.data[i].idProduk) {
+        console.error("Produk tidak memiliki ID:", res.data[i]);
+      }
+
+      if (res.data[i].kategori === "coffe") {
+        menuData.coffee.push(res.data[i]);
+      } else if (res.data[i].kategori === "beverages") {
+        menuData.beverages.push(res.data[i]);
+      } else {
+        menuData.snack.push(res.data[i]);
+      }
+    }
+
+    let currentCategory = "coffee";
+    let orders = [];
+    let subTotal = 0;
+
+    const menuContainer = document.getElementById("menuItems");
+    const orderList = document.getElementById("orderList");
+    const subTotalElement = document.getElementById("subTotal");
+    const totalElement = document.getElementById("total");
+    const categoryButtons = document.querySelectorAll(".category-btn");
+    const payButton = document.getElementById("payButton");
+    const paymentModal = document.getElementById("paymentModal");
+    const closeModal = document.getElementById("closeModal");
+    const cashPayment = document.getElementById("cashPayment");
+    const nonCashPayment = document.getElementById("nonCashPayment");
+
+    // Render menu items based on category
+    function renderMenu(category) {
+      menuContainer.innerHTML = "";
+      menuData[category].forEach((item) => {
+        const menuItem = document.createElement("div");
+        menuItem.className = "menu-item";
+        menuItem.innerHTML = `
+          <img src="../images/${item.link}" alt="${item.namaProduk}" class="menu-item-img">
+          <h3>${item.namaProduk}</h3>
+          <p>Rp.${item.harga.toLocaleString()}</p>
+        `;
+        menuItem.addEventListener("click", () => addToOrder(item));
+        menuContainer.appendChild(menuItem);
+      });
+    }
+
+    // Add to order
+    function addToOrder(item) {
+      const existingOrder = orders.find(order => order.name === item.namaProduk);
+
+      if (existingOrder) {
+        existingOrder.quantity += 1;
+        existingOrder.totalPrice += item.harga;
+      } else {
+        orders.push({ 
+          id : item.idProduk,
+          name: item.namaProduk, 
+          price: item.harga, 
+          quantity: 1, 
+          totalPrice: item.harga
+        });
+      }
+
+      subTotal += item.harga;
+      updateOrderList();
+    }
+
+    // Update order list
+    <!-- Update Order List -->
+function updateOrderList() {
+  orderList.innerHTML = "";
+  orders.forEach((order, index) => {
+    const orderItem = document.createElement("div");
+    orderItem.className = "order-item";
+    orderItem.innerHTML = `
+      <div>
+        <h3>${order.name}</h3>
+        <p>Rp.${order.price.toLocaleString()} x ${order.quantity}</p>
+      </div>
+      <div>
+        <p>Rp.${order.totalPrice.toLocaleString()}</p>
+        <button class="edit btn-sm remove-order-btn" data-index="${index}">Hapus</button>
+      </div>
+    `;
+    orderList.appendChild(orderItem);
+  });
+
+  subTotalElement.textContent = subTotal.toLocaleString();
+  totalElement.textContent = subTotal.toLocaleString();
+  document.querySelector('.totalbayar').textContent = 'Rp.' + subTotal.toLocaleString();
+
+  // Add event listeners to remove buttons
+  document.querySelectorAll(".remove-order-btn").forEach(button => {
+    button.addEventListener("click", (event) => {
+      const index = event.target.getAttribute("data-index");
+      removeOrder(index);
+    });
+  });
+}
+
+function removeOrder(index) {
+  const removedOrder = orders[index];
+  subTotal -= removedOrder.totalPrice;
+  orders.splice(index, 1);
+  updateOrderList();
+}
+
+
+    // Handle category button clicks
+    categoryButtons.forEach(button => {
+      button.addEventListener("click", () => {
+        document.querySelector(".category-btn.active").classList.remove("active");
+        button.classList.add("active");
+        currentCategory = button.dataset.category;
+        renderMenu(currentCategory);
+      });
+    });
+
+    // Open payment modal
+    payButton.addEventListener("click", () => {
+      paymentModal.style.display = "block";
+    });
+
+    // Close the modal
+    closeModal.addEventListener("click", () => {
+      paymentModal.style.display = "none";
+    });
+
+    // Handle Cash Payment
+cashPayment.addEventListener("click", () => {
+  const metodePembayaran = 'Tunai';  // Metode pembayaran Tunai
+  sendTransaksi(metodePembayaran);
+});
+
+// Handle Non-Cash Payment
+nonCashPayment.addEventListener("click", () => {
+  const metodePembayaran = 'Non Tunai';  // Metode pembayaran Non Tunai
+  sendTransaksi(metodePembayaran);
+});
+
+// Fungsi untuk mengirim transaksi ke server
+function sendTransaksi(metodePembayaran) {
+  // Ambil idkaryawan dari session yang sudah ada
+  let id = document.querySelector('.datetime > span:nth-child(3)')
+  let data =id.getAttribute('id-data')
+  const idKaryawan = parseInt(data)  // Pastikan `req.session.user` sudah di-set sebelumnya
+
+  const transaksiData = {
+    metode: metodePembayaran,  // Metode yang dipilih (Tunai atau Non Tunai)
+    idkaryawan: idKaryawan  // ID Karyawan yang diambil dari session
+  };
+
+  // Kirim data transaksi ke API
+  fetch("http://localhost:3001/karyawan/transaksi", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(transaksiData),
+  })
+    .then(res => res.json())
+    .then(data => {
+      // Handle the response for transaction success
+      alert("Payment Successful! " + metodePembayaran + " payment completed.");
+      paymentModal.style.display = "none";
+      sendListItems(data.result.insertId);  // Gunakan ID transaksi yang berhasil disimpan
+      resetOrder();
+      // Kirim list items setelah transaksi berhasil
+    })
+    .catch(err => {
+      alert("Failed to complete the payment.");
+      console.error(err);
+    });
+}
+
+
+    // Reset the order
+    function resetOrder() {
+      orders = [];
+      subTotal = 0;
+      updateOrderList();
+    }
+
+    // Send list items to the API after a successful transaction
+    function sendListItems(idTransaksi) {
+        console.log(orders)
+      orders.forEach(order => {
+        const listItemData = {
+          idtransaksi: idTransaksi,
+          idproduk: order.id,  // Pastikan produk memiliki ID yang sesuai
+          jumlah: order.quantity
+        };
+        console.log(listItemData.idproduk)
+
+        fetch("http://localhost:3001/karyawan/listitem", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(listItemData),
+        })
+          .then(res => res.json())
+          .then(data => {
+            console.log("List item added", data);
+          })
+          .catch(err => {
+            console.error("Failed to add list item", err);
+            console.log(err)
+          });
+      });
+    }
+
+    // Update date and time
+    function updateDateTime() {
+      const now = new Date();
+      document.getElementById("time").textContent = now.toLocaleTimeString();
+      document.getElementById("date").textContent = now.toLocaleDateString();
+    }
+
+    // Initial render
+    renderMenu(currentCategory);
+    setInterval(updateDateTime, 1000);
+  });
+
+  </script>
+  
+</body>
+</html>
